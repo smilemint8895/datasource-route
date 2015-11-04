@@ -36,21 +36,23 @@ public class DatasourceRoute extends AbstractRoutingDataSource{
 	
 	public DatasourceRoute(){
 		LOG.debug("DatasourceRoute load");
-		this.setTargetDataSources(getDatasources());
+		this.setTargetDataSources(getDataSources());
 		defaultDataSource = getDefaultDataSource();
 		bakDataSource = getBakDataSource();
 		this.setDefaultTargetDataSource(defaultDataSource);
-		openHearbeat(isHeartbeat(),getHeartbeatSQL(),getHeartbeatDelay(),getHeartbeatTime());
-		LOG.info("load dataSources ["+getDatasources()+"],defaultDataSource["+defaultDataSource+"],bak DataSource["+bakDataSource+"],heartbeat["+isHeartbeat()+"],heartbeatSQL["+getHeartbeatSQL()+"],heartbeatTime["+getHeartbeatTime()+"]" );
+		openHeartbeat();
+		LOG.info("load dataSources ["+ getDataSources()+"],defaultDataSource["+defaultDataSource+"],bak DataSource["+bakDataSource+"],heartbeat["+ isOpenHeartbeat()+"],heartbeatSQL["+getHeartbeatSQL()+"],heartbeatTime["+getHeartbeatTime()+"]" );
 	}
 
-	public void openHearbeat(boolean isOpen,final String heartbeatSQL,long heartbeatDelay,long heartbeatTimePeriod) {
-		if(isOpen && timer!=null){
+	public void openHeartbeat() {
+        if(!isOpenHeartbeat()) return;
+		if(timer!=null){
 			timer.cancel();
 			timer.schedule(new TimerTask() {
 				public void run() {
 					try {
-						if(null==heartbeatSQL || "".equals(heartbeatSQL.trim()))return;
+                        final String heartbeatSQL = getHeartbeatSQL();
+                        if(null==heartbeatSQL || "".equals(heartbeatSQL.trim()))return;
 						LOG.debug("heart beat SQL begin:"+heartbeatSQL);
 						getConnection().createStatement().execute(heartbeatSQL);
 						LOG.debug("heart beat SQL end:"+heartbeatSQL);
@@ -59,17 +61,17 @@ public class DatasourceRoute extends AbstractRoutingDataSource{
 						switchDataSource();
 					}
 				}
-			},heartbeatDelay,heartbeatTimePeriod);
+			},getHeartbeatDelay(),getHeartbeatTime());
 		}
 	}
 	
 	private void switchDataSource(){
-		LOG.info("switch dataSource begin: defaultDataSource["+defaultDataSource+"],bakDataSource"+bakDataSource+"]");
+		LOG.info("switch dataSource begin: defaultDataSource["+defaultDataSource+"],bakDataSource["+bakDataSource+"]");
 		Object temp = defaultDataSource;
 		defaultDataSource =bakDataSource;
 		bakDataSource = temp;
 		this.setDefaultTargetDataSource(defaultDataSource);
-		LOG.info("switch dataSource end: defaultDataSource["+defaultDataSource+"],bakDataSource"+bakDataSource+"]");
+		LOG.info("switch dataSource end: defaultDataSource["+defaultDataSource+"],bakDataSource["+bakDataSource+"]");
 
 	}
 	

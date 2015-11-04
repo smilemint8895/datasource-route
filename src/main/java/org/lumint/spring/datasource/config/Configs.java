@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import org.apache.commons.dbcp.BasicDataSource;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -32,8 +34,8 @@ import org.springframework.context.support.GenericApplicationContext;
  */
 public final class Configs {
 
-	private static Map<Object,Object> dataSourceMap = new HashMap<Object,Object>();
-	private static Map<String,Properties> propMap = new HashMap<String,Properties>();
+	private static Map<Object,Object> dataSourceMap = Maps.newHashMap();
+	private static Map<String,Properties> propMap = Maps.newHashMap();
 	private static final String defaultPathKey = "dataSourcePath";
 	private static final String defaultPathValue = "datasources";
 	private static final String defaultDataSourceKey = "defaultDataSource";
@@ -66,20 +68,29 @@ public final class Configs {
 			for(File file : files){
 				Properties properties = new Properties();
 				properties.load(new FileInputStream(file));
-				propMap.put(file.getName().substring(0, file.getName().lastIndexOf('.')),properties);
+				propMap.put(getFileNameKey(file),properties);
 			}
 		}catch(Exception e){
 			// ignore e
 			LOG.error("load file error!", e);
 		}
 	}
+
+    private static String getFileNameKey(File file) {
+        if(file == null) return "";
+        return file.getName().substring(0, file.getName().lastIndexOf('.'));
+    }
+
+    private static void reloadProp(String folderPath) {
+        loadProp(folderPath,true);
+    }
 	static{
 		init();
 	}
 	public static void init(){
 		Properties config = new Properties();
 		try {
-			config.load(Configs.class.getClassLoader().getResourceAsStream(defaultConfigPath));
+			config.load(Thread.currentThread().getContextClassLoader().getResourceAsStream(defaultConfigPath));
 			String dataSourcePath = config.getProperty(defaultPathKey, defaultPathValue);
 			defaultDataSource = config.getProperty(defaultDataSourceKey, defaultDataSourceValue);
 			bakDataSource = config.getProperty(bakDataSourceKey, bakDataSourceValue);
@@ -95,7 +106,7 @@ public final class Configs {
 	}
 	
 	private static void initDataSource(String dataSourcePath){
-		loadProp(dataSourcePath, true);
+        reloadProp(dataSourcePath);
 		GenericApplicationContext ctx = new GenericApplicationContext();  
 		addPropBean(ctx);
 		//addAspectBean(ctx);
@@ -123,8 +134,8 @@ public final class Configs {
 //		ctx.registerBeanDefinition("datasourceAspect", beanDefBuilder.getBeanDefinition());
 //	}
 	
-	public static Map<Object, Object> getDatasources(){
-		return dataSourceMap;
+	public static Map<Object, Object> getDataSources(){
+		return ImmutableMap.copyOf(dataSourceMap);
 	}
 	public static Object getDefaultDataSource(){
 		 return dataSourceMap.get(defaultDataSource);
@@ -138,7 +149,7 @@ public final class Configs {
 		return heartbeatSQL;
 	}
 	
-	public static boolean isHeartbeat(){
+	public static boolean isOpenHeartbeat(){
 		return Boolean.valueOf(heartbeat.toLowerCase());
 	}
 	
